@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Radar de Ofertas</string>
+    <string name="title_activity_main">Radar de Ofertas</string>
+    <string name="package_name">es.mansour.radarofertas</string>
+    <string name="custom_url_scheme">es.mansour.radarofertas</string>
+</resources>
