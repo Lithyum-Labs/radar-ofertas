@@ -62,6 +62,40 @@ export function salary(s: Salary | null): string | null {
   return `${range} ${currency}${PERIODS[s.interval ?? ""] ?? ""}`.replace("  ", " ");
 }
 
+const JOB_TYPES: Record<string, string> = {
+  fulltime: "Jornada completa",
+  parttime: "Jornada parcial",
+  temporary: "Temporal",
+  contract: "Autónomo",
+  internship: "Prácticas / formación",
+  perdiem: "Por días",
+  volunteer: "Voluntariado",
+  other: "Otro",
+};
+
+/** "Jornada completa, Contrato fijo discontinuo", from the board's words when it gives them */
+export function conditions(job: Job): string | null {
+  const own = [job.workday, job.contract_type].filter(Boolean);
+  if (own.length) return own.join(", ");
+  const types = (job.job_type ?? "").split(",").map((t) => JOB_TYPES[t.trim()] ?? t.trim()).filter(Boolean);
+  return types.length ? types.join(", ") : null;
+}
+
+export function longDate(value: string | null): string | null {
+  const date = parse(value);
+  if (!date) return null;
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${two(date.getDate())}/${two(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
+
+/** How the fit reads in words, like a job board's summary line */
+export function fitSummary(score: number): string {
+  if (score >= 80) return "Tu perfil encaja muy bien con esta oferta";
+  if (score >= 60) return "Tu perfil cumple buena parte de los requisitos";
+  if (score >= 40) return "Tu perfil coincide en algunos requisitos de la oferta";
+  return "Tu perfil coincide en pocos requisitos de la oferta";
+}
+
 export function scoreClass(score: number | null): string {
   if (score == null) return "score none";
   return score >= 70 ? "score good" : score >= 45 ? "score fair" : "score poor";

@@ -25,6 +25,10 @@ FIELDS = [
     "is_remote",
     "work_from_home_type",
     "job_type",
+    "contract_type",
+    "workday",
+    "company_logo",
+    "company_url",
     "min_amount",
     "max_amount",
     "interval",
@@ -115,6 +119,7 @@ def to_json(row: sqlite3.Row, description: bool = True) -> dict[str, object]:
         "missing": detail.get("missing", []),
         "warnings": detail.get("warnings", []),
         "title_only": bool(detail.get("title_only", False)),
+        "checks": detail.get("checks", []),
     }
     job.pop("match_notes", None)
     job["has_description"] = bool(job.get("description"))
@@ -129,6 +134,11 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.db() as db:
             db.executescript(SCHEMA)
+            # databases from an older version: add the columns they lack
+            have = {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}
+            for name in FIELDS:
+                if name not in have:
+                    db.execute(f"ALTER TABLE jobs ADD COLUMN {name}")
 
     @contextmanager
     def db(self) -> Iterator[sqlite3.Connection]:

@@ -62,3 +62,17 @@ export async function openPdf(name: string, base64: string): Promise<void> {
   window.open(url, "_blank", "noopener");
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
+
+/** Android's share sheet for a job's link (WhatsApp, mail…), or the browser's */
+export async function shareLink(title: string, url: string): Promise<void> {
+  if (isNative()) {
+    const { Share } = await import("@capacitor/share");
+    await Share.share({ title, text: title, url });
+    return;
+  }
+  if (navigator.share) {
+    await navigator.share({ title, url });
+    return;
+  }
+  await navigator.clipboard?.writeText(url);
+}

@@ -420,6 +420,9 @@ class TokenMiddleware:
 async def lifespan(app: Starlette) -> AsyncIterator[None]:
     global store
     store = run.open_store()
+    # jobs stored by an older version get the current breakdown of their fit
+    if rescored := run.rescore_all(store):
+        log.info(f"scored {rescored} stored jobs against the profile")
     stop = threading.Event()
     searcher = threading.Thread(
         target=run.loop, args=(store, stop), name="searches", daemon=True

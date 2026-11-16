@@ -189,6 +189,8 @@ class JobPost(BaseModel):
     company_reviews_count: int | None = None
     vacancy_count: int | None = None
     work_from_home_type: str | None = None
+    contract_type: str | None = None
+    workday: str | None = None
 
     @model_serializer
     def _row(self) -> dict[str, object]:

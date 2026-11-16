@@ -289,6 +289,8 @@ class InfoJobs(Scraper):
             job_type=self._job_types(offer) or None,
             is_remote=offer.teleworking == remote_label,
             work_from_home_type=offer.teleworking,
+            contract_type=offer.contractType,
+            workday=offer.workday,
             job_level="Directivo" if offer.executive else None,
             company_url=offer.companyLink,
             company_logo=offer.companyLogo,

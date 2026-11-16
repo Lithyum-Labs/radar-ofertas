@@ -1,7 +1,33 @@
+import { useState } from "react";
 import type { Job } from "./api";
 import { useApp } from "./context";
 import { ago, place, salary, scoreClass } from "./format";
 import { StarIcon } from "./icons";
+
+/** The company's logo, or its initial when the board gives none (or it fails) */
+export function Logo({ job, size = 44 }: { job: Job; size?: number }) {
+  const [broken, setBroken] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const initial = (job.company ?? job.title).trim().charAt(0).toUpperCase() || "?";
+  // the initial underneath; the logo covers it once it has loaded
+  return (
+    <span className="logo" style={{ width: size, height: size }}>
+      <span className="logo-initial" style={{ fontSize: size * 0.45 }}>
+        {initial}
+      </span>
+      {job.company_logo && !broken && (
+        <img
+          src={job.company_logo}
+          alt=""
+          loading="lazy"
+          className={loaded ? "loaded" : ""}
+          onLoad={() => setLoaded(true)}
+          onError={() => setBroken(true)}
+        />
+      )}
+    </span>
+  );
+}
 
 export function Score({ job, large = false }: { job: Job; large?: boolean }) {
   if (job.match == null) return null;
@@ -59,6 +85,7 @@ export function JobCard({ job, isNew = false }: { job: Job; isNew?: boolean }) {
   return (
     <article className="card" onClick={() => open(job)}>
       <div className="card-top">
+        <Logo job={job} />
         <div className="card-titles">
           {isNew && <span className="new-badge">Nueva</span>}
           <h3>{job.title}</h3>

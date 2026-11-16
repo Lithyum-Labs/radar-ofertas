@@ -22,15 +22,33 @@ export interface Job {
   is_remote: boolean;
   work_from_home_type: string | null;
   job_type: string | null;
+  contract_type?: string | null;
+  workday?: string | null;
+  company_logo?: string | null;
+  company_url?: string | null;
   salary: Salary | null;
   match: number | null;
-  match_detail: { have: string[]; missing: string[]; warnings: string[]; title_only: boolean };
+  match_detail: {
+    have: string[];
+    missing: string[];
+    warnings: string[];
+    title_only: boolean;
+    checks?: FitCheck[];
+  };
   saved_at: string | null;
   applied_at: string | null;
   hidden_at: string | null;
   note: string | null;
   has_description: boolean;
   description?: string | null;
+}
+
+/** One criterion of the fit: ok true (meets it), false (doesn't), null (partly / unknown) */
+export interface FitCheck {
+  key: string;
+  label: string;
+  ok: boolean | null;
+  detail: string;
 }
 
 export interface JobPage {

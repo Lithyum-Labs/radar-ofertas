@@ -111,6 +111,7 @@ SENIOR = r"\bsenior\b|\bsr\.?\b|\blead\b|\blider\b|arquitect|architect|principal
 JUNIOR = r"junior|\bjr\.?\b|trainee|practicas|becari|sin experiencia"
 DEV = r"desarroll|programador|developer|engineer|ingenier|software|\bdev\b"
 LEVELS = ["a1", "a2", "b1", "b2", "c1", "c2"]
+ORDER = ["skills", "experience", "location", "role", "english"]
 
 
 def normalise(text: object) -> str:
@@ -131,6 +132,9 @@ class Match:
     missing: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     title_only: bool = False
+    # one line per criterion, like a job board's fit screen:
+    # {"key", "label", "ok": True | False | None (partly / unknown), "detail"}
+    checks: list[dict[str, object]] = field(default_factory=list)
 
     def notes(self) -> str:
         """One line for the CSV: what it has, what it lacks, what to watch"""
@@ -184,6 +188,10 @@ class Profile:
         )
         text = f"{title}\n{description}"
         warnings: list[str] = []
+        checks: list[dict[str, object]] = []
+
+        def check(key: str, label: str, ok: bool | None, detail: str) -> None:
+            checks.append({"key": key, "label": label, "ok": ok, "detail": detail})
 
         # skills
         asked = [name for name, pattern in TECH.items() if re.search(pattern, text)]
@@ -217,6 +225,14 @@ class Profile:
             warnings.append("puesto senior")
         if re.search(JUNIOR, title):
             role = min(1.0, role + 0.2)
+        if senior and self.years < 4:
+            check("role", "Puesto", False, "Es un puesto senior")
+        elif role >= 1.0:
+            check("role", "Puesto", True, "Encaja con los puestos que buscas")
+        elif role >= 0.6:
+            check("role", "Puesto", None, "Puesto técnico, no es de los que buscas")
+        else:
+            check("role", "Puesto", False, "No es de los puestos que buscas")
 
         # experience: the smallest "N años" the ad asks for
         asked_years = [
@@ -238,6 +254,24 @@ class Profile:
                 warnings.append(f"pide {need}+ años")
         elif senior:
             experience = 0.2
+        years = f"{self.years:g} año{'' if self.years == 1 else 's'}"
+        if asked_years:
+            need = min(asked_years)
+            check(
+                "experience",
+                "Experiencia",
+                gap <= 0 if gap <= 0 or gap > 1 else None,
+                f"Piden {need} año{'' if need == 1 else 's'}, tienes {years}",
+            )
+        elif senior:
+            check("experience", "Experiencia", False, f"Puesto senior, tienes {years}")
+        else:
+            check(
+                "experience",
+                "Experiencia",
+                None,
+                "La oferta no indica años de experiencia",
+            )
 
         # location
         modality = normalise(job.get("work_from_home_type"))
@@ -260,6 +294,17 @@ class Profile:
             warnings.append(f"presencial en {job.get('location')}")
         else:
             location = 0.5
+        where = str(job.get("location") or "sin indicar")
+        if remote:
+            check("location", "Ubicación", self.remote_ok, f"Teletrabajo · {where}")
+        elif local:
+            check("location", "Ubicación", True, where)
+        elif "hibrido" in modality or "hybrid" in modality:
+            check("location", "Ubicación", None, f"Híbrido en {where}")
+        elif place:
+            check("location", "Ubicación", False, f"Presencial en {where}")
+        else:
+            check("location", "Ubicación", None, "Sin indicar")
 
         # languages: an English level above the profile's is worth knowing
         level = re.search(
@@ -270,6 +315,32 @@ class Profile:
             asked_level = (level.group(1) or level.group(2) or "c2").lower()
             if LEVELS.index(asked_level) > LEVELS.index(self.english):
                 warnings.append(f"inglés {asked_level.upper()}")
+                check(
+                    "english",
+                    "Inglés",
+                    False,
+                    f"Piden {asked_level.upper()}, tienes {self.english.upper()}",
+                )
+            else:
+                check("english", "Inglés", True, f"Piden {asked_level.upper()}")
+
+        if not asked:
+            check(
+                "skills",
+                "Conocimientos",
+                None,
+                "No se pueden comparar: solo el título"
+                if not description
+                else "La oferta no nombra tecnologías concretas",
+            )
+        else:
+            check(
+                "skills",
+                "Conocimientos",
+                True if not missing else False if not have else None,
+                f"{len(have)} coincide{'n' if len(have) != 1 else ''}, "
+                f"{len(missing)} no",
+            )
 
         parts = [(skills, 0.55), (role, 0.15), (experience, 0.15), (location, 0.15)]
         weight = sum(w for value, w in parts if value is not None)
@@ -285,4 +356,10 @@ class Profile:
             missing=missing,
             warnings=warnings,
             title_only=not description,
+            checks=[
+                checks[i]
+                for i in sorted(
+                    range(len(checks)), key=lambda i: ORDER.index(checks[i]["key"])
+                )
+            ],
         )
